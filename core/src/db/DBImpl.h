@@ -25,7 +25,6 @@
 
 #include "config/ConfigMgr.h"
 #include "utils/ThreadPool.h"
-#include "wal/WalManager.h"
 
 namespace milvus {
 namespace engine {
@@ -37,10 +36,10 @@ class DBImpl : public DB, public ConfigObserver {
     ~DBImpl();
 
     Status
-    Start();
+    Start() override;
 
     Status
-    Stop();
+    Stop() override;
 
     Status
     CreateCollection(const snapshot::CreateCollectionContext& context) override;
@@ -81,13 +80,14 @@ class DBImpl : public DB, public ConfigObserver {
                 const std::string& field_name, const CollectionIndex& index) override;
 
     Status
-    DropIndex(const std::string& collection_name, const std::string& field_name = "") override;
+    DropIndex(const std::string& collection_name, const std::string& field_name) override;
 
     Status
     DescribeIndex(const std::string& collection_name, const std::string& field_name, CollectionIndex& index) override;
 
     Status
-    Insert(const std::string& collection_name, const std::string& partition_name, DataChunkPtr& data_chunk) override;
+    Insert(const std::string& collection_name, const std::string& partition_name, DataChunkPtr& data_chunk,
+           id_t op_id) override;
 
     Status
     GetEntityByID(const std::string& collection_name, const IDNumbers& id_array,
@@ -95,7 +95,7 @@ class DBImpl : public DB, public ConfigObserver {
                   DataChunkPtr& data_chunk) override;
 
     Status
-    DeleteEntityByID(const std::string& collection_name, const engine::IDNumbers& entity_ids) override;
+    DeleteEntityByID(const std::string& collection_name, const engine::IDNumbers& entity_ids, id_t op_id) override;
 
     Status
     Query(const server::ContextPtr& context, const query::QueryPtr& query_ptr, engine::QueryResultPtr& result) override;
@@ -103,9 +103,10 @@ class DBImpl : public DB, public ConfigObserver {
     Status
     ListIDInSegment(const std::string& collection_name, int64_t segment_id, IDNumbers& entity_ids) override;
 
+    // if the input field_names is empty, will load all fields of this collection
     Status
     LoadCollection(const server::ContextPtr& context, const std::string& collection_name,
-                   const std::vector<std::string>& field_names, bool force = false) override;
+                   const std::vector<std::string>& field_names, bool force) override;
 
     Status
     Flush(const std::string& collection_name) override;
@@ -114,14 +115,14 @@ class DBImpl : public DB, public ConfigObserver {
     Flush() override;
 
     Status
-    Compact(const server::ContextPtr& context, const std::string& collection_name, double threshold = 0.0) override;
+    Compact(const server::ContextPtr& context, const std::string& collection_name, double threshold) override;
 
     void
     ConfigUpdate(const std::string& name) override;
 
  private:
     void
-    InternalFlush(const std::string& collection_name = "");
+    InternalFlush(const std::string& collection_name = "", bool merge = true);
 
     void
     TimingFlushThread();
@@ -145,12 +146,6 @@ class DBImpl : public DB, public ConfigObserver {
     WaitBuildIndexFinish();
 
     void
-    TimingWalThread();
-
-    Status
-    ExecWalRecord(const wal::MXLogRecord& record);
-
-    void
     StartMergeTask(const std::set<std::string>& collection_names, bool force_merge_all = false);
 
     void
@@ -172,14 +167,10 @@ class DBImpl : public DB, public ConfigObserver {
     MemManagerPtr mem_mgr_;
     MergeManagerPtr merge_mgr_ptr_;
 
-    //    std::shared_ptr<wal::WalManager> wal_mgr_;
-    std::thread bg_wal_thread_;
-
     std::thread bg_flush_thread_;
     std::thread bg_metric_thread_;
     std::thread bg_index_thread_;
 
-    SimpleWaitNotify swn_wal_;
     SimpleWaitNotify swn_flush_;
     SimpleWaitNotify swn_metric_;
     SimpleWaitNotify swn_index_;

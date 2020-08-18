@@ -24,7 +24,7 @@ default_fields = gen_default_fields()
 default_single_query = {
     "bool": {
         "must": [
-            {"vector": {field_name: {"topk": 10, "query": gen_vectors(1, dim),
+            {"vector": {field_name: {"topk": 10, "query": gen_vectors(1, dim),"metric_type":"L2",
                                      "params": {"nprobe": 10}}}}
         ]
     }
@@ -116,7 +116,6 @@ class TestInsertBase:
         connect.flush([collection])
         connect.drop_collection(collection)
 
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_create_index(self, connect, collection, get_simple_index):
         '''
@@ -129,7 +128,6 @@ class TestInsertBase:
         connect.flush([collection])
         connect.create_index(collection, field_name, get_simple_index)
 
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_after_create_index(self, connect, collection, get_simple_index):
         '''
@@ -141,8 +139,6 @@ class TestInsertBase:
         ids = connect.insert(collection, entities)
         assert len(ids) == nb
 
-    # TODO
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_search(self, connect, collection):
         '''
@@ -166,10 +162,8 @@ class TestInsertBase:
     def insert_count(self, request):
         yield request.param
 
-    # TODO
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
-    def test_insert_ids(self, connect, collection, insert_count):
+    def test_insert_ids(self, connect, id_collection, insert_count):
         '''
         target: test insert vectors in collection, use customize ids
         method: create collection and insert vectors in it, check the ids returned and the collection length after vectors inserted
@@ -177,17 +171,15 @@ class TestInsertBase:
         '''
         nb = insert_count
         ids = [i for i in range(nb)]
-        res_ids = connect.insert(collection, gen_entities(nb), ids)
-        connect.flush([collection])
+        res_ids = connect.insert(id_collection, gen_entities(nb), ids)
+        connect.flush([id_collection])
         assert len(res_ids) == nb
         assert res_ids == ids
-        res_count = connect.count_entities(collection)
+        res_count = connect.count_entities(id_collection)
         assert res_count == nb
 
-    # TODO
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
-    def test_insert_the_same_ids(self, connect, collection, insert_count):
+    def test_insert_the_same_ids(self, connect, id_collection, insert_count):
         '''
         target: test insert vectors in collection, use customize the same ids
         method: create collection and insert vectors in it, check the ids returned and the collection length after vectors inserted
@@ -195,14 +187,13 @@ class TestInsertBase:
         '''
         nb = insert_count
         ids = [1 for i in range(nb)]
-        res_ids = connect.insert(collection, gen_entities(nb), ids)
-        connect.flush([collection])
+        res_ids = connect.insert(id_collection, gen_entities(nb), ids)
+        connect.flush([id_collection])
         assert len(res_ids) == nb
         assert res_ids == ids
-        res_count = connect.count_entities(collection)
+        res_count = connect.count_entities(id_collection)
         assert res_count == nb
 
-    # TODO
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_ids_fields(self, connect, get_filter_field, get_vector_field):
         '''
@@ -229,8 +220,9 @@ class TestInsertBase:
         assert res_count == nb
 
     # TODO: assert exception && enable
+    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
-    def _test_insert_twice_ids_no_ids(self, connect, id_collection):
+    def test_insert_twice_ids_no_ids(self, connect, id_collection):
         '''
         target: check the result of insert, with params ids and no ids
         method: test insert vectors twice, use customize ids first, and then use no ids
@@ -242,8 +234,9 @@ class TestInsertBase:
             res_ids_new = connect.insert(id_collection, entities)
 
     # TODO: assert exception && enable
+    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
-    def _test_insert_twice_not_ids_ids(self, connect, id_collection):
+    def test_insert_twice_not_ids_ids(self, connect, id_collection):
         '''
         target: check the result of insert, with params ids and no ids
         method: test insert vectors twice, use not ids first, and then use customize ids
@@ -276,7 +269,6 @@ class TestInsertBase:
         with pytest.raises(Exception) as e:
             res_ids = connect.insert(collection, entity, ids)
 
-    # TODO
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_ids_fields(self, connect, get_filter_field, get_vector_field):
         '''
@@ -310,8 +302,6 @@ class TestInsertBase:
         ids = connect.insert(collection, entities, partition_tag=tag)
         assert len(ids) == nb
 
-    # TODO
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_tag_with_ids(self, connect, id_collection):
         '''
@@ -404,25 +394,25 @@ class TestInsertBase:
         with pytest.raises(Exception):
             connect.insert(collection, tmp_entity)
 
-    # TODO: Python sdk needs to do check
-    def _test_insert_with_field_type_not_match(self, connect, collection):
+    @pytest.mark.level(2)
+    def test_insert_with_field_type_not_match(self, connect, collection):
         '''
         target: test insert entities, with the entity field type updated
         method: update entity field type
         expected: error raised
         '''
-        tmp_entity = update_field_type(copy.deepcopy(entity), DataType.INT64, DataType.FLOAT)
+        tmp_entity = update_field_type(copy.deepcopy(entity), "int64", DataType.FLOAT)
         with pytest.raises(Exception):
             connect.insert(collection, tmp_entity)
 
-    # TODO: Python sdk needs to do check
-    def _test_insert_with_field_value_not_match(self, connect, collection):
+    @pytest.mark.level(2)
+    def test_insert_with_field_value_not_match(self, connect, collection):
         '''
         target: test insert entities, with the entity field value updated
         method: update entity field value
         expected: error raised
         '''
-        tmp_entity = update_field_value(copy.deepcopy(entity), 'int64', 's')
+        tmp_entity = update_field_value(copy.deepcopy(entity), DataType.FLOAT, 's')
         with pytest.raises(Exception):
             connect.insert(collection, tmp_entity)
 
@@ -529,7 +519,7 @@ class TestInsertBase:
         assert res_count == thread_num * nb
 
 
-class TestAddAsync:
+class TestInsertAsync:
     @pytest.fixture(scope="function", autouse=True)
     def skip_http_check(self, args):
         if args["handler"] == "HTTP":
@@ -549,9 +539,9 @@ class TestAddAsync:
         logging.getLogger().info("In callback check status")
         assert not result
 
-    def check_status_not_ok(self, status, result):
+    def check_result(self, result):
         logging.getLogger().info("In callback check status")
-        assert not status.OK()
+        assert result
 
     def test_insert_async(self, connect, collection, insert_count):
         '''
@@ -588,16 +578,15 @@ class TestAddAsync:
         future = connect.insert(collection, gen_entities(nb), _async=True, _callback=self.check_status)
         future.done()
 
-    # TODO:
     @pytest.mark.level(2)
-    def _test_insert_async_long(self, connect, collection):
+    def test_insert_async_long(self, connect, collection):
         '''
         target: test insert vectors with different length of vectors
         method: set different vectors as insert method params
         expected: length of ids is equal to the length of vectors
         '''
         nb = 50000
-        future = connect.insert(collection, gen_entities(nb), _async=True, _callback=self.check_status)
+        future = connect.insert(collection, gen_entities(nb), _async=True, _callback=self.check_result)
         result = future.result()
         assert len(result) == nb
         connect.flush([collection])
@@ -605,14 +594,14 @@ class TestAddAsync:
         logging.getLogger().info(count)
         assert count == nb
 
-    # TODO:
-    def _test_insert_async_callback_timeout(self, connect, collection):
+    @pytest.mark.level(2)
+    def test_insert_async_callback_timeout(self, connect, collection):
         '''
         target: test insert vectors with different length of vectors
         method: set different vectors as insert method params
         expected: length of ids is equal to the length of vectors
         '''
-        nb = 500000
+        nb = 100000
         future = connect.insert(collection, gen_entities(nb), _async=True, _callback=self.check_status, timeout=1)
         with pytest.raises(Exception) as e:
             result = future.result()
@@ -692,7 +681,6 @@ class TestInsertMultiCollections:
         connect.flush([collection_name])
         assert len(ids) == 1
 
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_create_index_insert_vector_another(self, connect, collection, get_simple_index):
         '''
@@ -706,7 +694,6 @@ class TestInsertMultiCollections:
         ids = connect.insert(collection, entity)
         connect.drop_collection(collection_name)
 
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_vector_create_index_another(self, connect, collection, get_simple_index):
         '''
@@ -721,7 +708,6 @@ class TestInsertMultiCollections:
         count = connect.count_entities(collection_name)
         assert count == 0
 
-    @pytest.mark.level(2)
     @pytest.mark.timeout(ADD_TIMEOUT)
     def test_insert_vector_sleep_create_index_another(self, connect, collection, get_simple_index):
         '''
@@ -841,8 +827,11 @@ class TestInsertInvalid(object):
         '''
         entity_id = get_entity_id
         ids = [entity_id for _ in range(nb)]
-        with pytest.raises(Exception):
+        if isinstance(entity_id, int):
             connect.insert(id_collection, entities, ids)
+        else:
+            with pytest.raises(Exception):
+                connect.insert(id_collection, entities, ids)
 
     def test_insert_with_invalid_collection_name(self, connect, get_collection_name):
         collection_name = get_collection_name

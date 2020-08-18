@@ -43,22 +43,25 @@ Please mark all changes in change log and use the issue from GitHub
 -   \#2543 Remove secondary_path related code
 -   \#2544 Optimize unittest build
 -   \#2561 Clean util dependencies with other modules
+-   \#2568 Upgrade thirdparty oatpp to v1.1.0
 -   \#2612 Move all APIs in utils into namespace milvus 
 -   \#2675 Print out system memory size when report invalid cpu cache size 
 -   \#2686 Remove dependency on sqlite_orm
 -   \#2841 Replace IndexType/EngineType/MetricType
 -   \#2858 Unify index name in db
 -   \#2884 Using BlockingQueue in JobMgr
+-   \#3220 Enable -Werror to improve code quality
 
 ## Task
 
-# Milvus 0.10.2 (TBD)
+# Milvus 0.10.2 (2020-08-15)
 
 ## Bug
 -   \#2890 Fix the index size caculation in cache
 -   \#2952 Fix the result merging of IVF_PQ IP
 -   \#2975 Fix config UT failed
 -   \#3012 If the cache is too small, queries using multiple GPUs will cause to crash
+-   \#3133 Reverse query result in mishards if metric type is IP
 
 ## Feature
 

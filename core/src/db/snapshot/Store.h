@@ -14,7 +14,6 @@
 #include "codecs/Codec.h"
 #include "db/Utils.h"
 #include "db/meta/MetaFactory.h"
-#include "db/meta/MetaSession.h"
 #include "db/snapshot/ResourceContext.h"
 #include "db/snapshot/ResourceTypes.h"
 #include "db/snapshot/Resources.h"
@@ -24,7 +23,7 @@
 #include "utils/Log.h"
 #include "utils/Status.h"
 
-#include <fiu-local.h>
+#include <fiu/fiu-local.h>
 #include <stdlib.h>
 #include <time.h>
 #include <any>
@@ -45,9 +44,7 @@
 #include <utility>
 #include <vector>
 
-namespace milvus {
-namespace engine {
-namespace snapshot {
+namespace milvus::engine::snapshot {
 
 class Store;
 struct ApplyContext {
@@ -187,7 +184,7 @@ class Store : public std::enable_shared_from_this<Store> {
             ResourceContextBuilder<ResourceT>().SetTable(ResourceT::Name).SetOp(meta::oDelete).SetID(id).CreatePtr();
 
         int64_t result_id;
-        return adapter_->Apply<ResourceT>(rc_ctx_p, result_id);
+        return adapter_->Execute<ResourceT>(rc_ctx_p, result_id);
     }
 
     IDS_TYPE
@@ -211,7 +208,7 @@ class Store : public std::enable_shared_from_this<Store> {
     IDS_TYPE
     AllActiveCollectionCommitIds(ID_TYPE collection_id, bool reversed = true) const {
         IDS_TYPE ids, selected_ids;
-        adapter_->SelectResourceIDs<CollectionCommit, int64_t>(selected_ids, meta::F_COLLECTON_ID, {collection_id});
+        adapter_->SelectResourceIDs<CollectionCommit, int64_t>(selected_ids, CollectionIdField::Name, {collection_id});
 
         if (!reversed) {
             ids = selected_ids;
@@ -231,7 +228,7 @@ class Store : public std::enable_shared_from_this<Store> {
         auto res_ctx_p = ResourceContextBuilder<ResourceT>().SetOp(meta::oAdd).SetResource(res_p).CreatePtr();
 
         int64_t result_id;
-        auto status = adapter_->Apply<ResourceT>(res_ctx_p, result_id);
+        auto status = adapter_->Execute<ResourceT>(res_ctx_p, result_id);
         if (!status.ok()) {
             return status;
         }
@@ -377,7 +374,7 @@ class Store : public std::enable_shared_from_this<Store> {
                                  .AddAttr(meta::F_STATE)
                                  .CreatePtr();
 
-                adapter_->Apply<Collection>(t_c_p, result_id);
+                adapter_->Execute<Collection>(t_c_p, result_id);
             } else if (record.type() == typeid(std::shared_ptr<CollectionCommit>)) {
                 const auto& r = std::any_cast<std::shared_ptr<CollectionCommit>>(record);
                 r->Activate();
@@ -386,7 +383,7 @@ class Store : public std::enable_shared_from_this<Store> {
                                   .SetResource(r)
                                   .AddAttr(meta::F_STATE)
                                   .CreatePtr();
-                adapter_->Apply<CollectionCommit>(t_cc_p, result_id);
+                adapter_->Execute<CollectionCommit>(t_cc_p, result_id);
             }
         }
     }
@@ -397,6 +394,4 @@ class Store : public std::enable_shared_from_this<Store> {
 };
 
 using StorePtr = Store::Ptr;
-}  // namespace snapshot
-}  // namespace engine
-}  // namespace milvus
+}  // namespace milvus::engine::snapshot

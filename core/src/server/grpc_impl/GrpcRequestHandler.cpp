@@ -11,7 +11,7 @@
 
 #include "server/grpc_impl/GrpcRequestHandler.h"
 
-#include <fiu-local.h>
+#include <fiu/fiu-local.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -275,18 +275,7 @@ CopyDataChunkToEntity(const engine::DataChunkPtr& data_chunk,
         if (data == nullptr || data->data_.empty())
             continue;
 
-        auto single_size = data->data_.size() / id_size;
-
-        if (name == engine::FIELD_UID) {
-            int64_t int64_value;
-            auto int64_size = single_size * sizeof(int8_t) / sizeof(int64_t);
-            for (int i = 0; i < id_size; i++) {
-                auto offset = i * single_size;
-                memcpy(&int64_value, data->data_.data() + offset, single_size);
-                response->add_ids(int64_value);
-            }
-            continue;
-        }
+        auto single_size = (id_size != 0) ? (data->data_.size() / id_size) : 0;
 
         auto field_value = response->add_fields();
         auto vector_record = field_value->mutable_vector_record();
@@ -326,7 +315,6 @@ CopyDataChunkToEntity(const engine::DataChunkPtr& data_chunk,
             if (type == engine::DataType::INT32) {
                 // add int32 data
                 int32_t int32_value;
-                auto int32_size = single_size * sizeof(int8_t) / sizeof(int32_t);
                 for (int i = 0; i < id_size; i++) {
                     auto offset = i * single_size;
                     memcpy(&int32_value, data->data_.data() + offset, single_size);
@@ -335,7 +323,6 @@ CopyDataChunkToEntity(const engine::DataChunkPtr& data_chunk,
             } else if (type == engine::DataType::INT64) {
                 // add int64 data
                 int64_t int64_value;
-                auto int64_size = single_size * sizeof(int8_t) / sizeof(int64_t);
                 for (int i = 0; i < id_size; i++) {
                     auto offset = i * single_size;
                     memcpy(&int64_value, data->data_.data() + offset, single_size);
@@ -344,7 +331,6 @@ CopyDataChunkToEntity(const engine::DataChunkPtr& data_chunk,
             } else if (type == engine::DataType::DOUBLE) {
                 // add double data
                 double double_value;
-                auto int32_size = single_size * sizeof(int8_t) / sizeof(double);
                 for (int i = 0; i < id_size; i++) {
                     auto offset = i * single_size;
                     memcpy(&double_value, data->data_.data() + offset, single_size);
@@ -353,7 +339,6 @@ CopyDataChunkToEntity(const engine::DataChunkPtr& data_chunk,
             } else if (type == engine::DataType::FLOAT) {
                 // add float data
                 float float_value;
-                auto float_size = single_size * sizeof(int8_t) / sizeof(float);
                 for (int i = 0; i < id_size; i++) {
                     auto offset = i * single_size;
                     memcpy(&float_value, data->data_.data() + offset, single_size);
@@ -889,6 +874,10 @@ GrpcRequestHandler::GetEntityByID(::grpc::ServerContext* context, const ::milvus
     Status status = req_handler_.GetEntityByID(GetContext(context), request->collection_name(), vector_ids, field_names,
                                                valid_row, field_mappings, data_chunk);
 
+    for (auto it : vector_ids) {
+        response->add_ids(it);
+    }
+
     int valid_size = 0;
     for (auto it : valid_row) {
         response->add_valid_row(it);
@@ -897,9 +886,7 @@ GrpcRequestHandler::GetEntityByID(::grpc::ServerContext* context, const ::milvus
         }
     }
 
-    if (valid_size > 0) {
-        CopyDataChunkToEntity(data_chunk, field_mappings, valid_size, response);
-    }
+    CopyDataChunkToEntity(data_chunk, field_mappings, valid_size, response);
 
     LOG_SERVER_INFO_ << LogOut("Request [%s] %s end.", GetContext(context)->ReqID().c_str(), __func__);
     SET_RESPONSE(response->mutable_status(), status, context);
@@ -1047,7 +1034,11 @@ GrpcRequestHandler::DescribeCollection(::grpc::ServerContext* context, const ::m
             for (auto& item : field_schema.index_params_.items()) {
                 auto grpc_index_param = field->add_index_params();
                 grpc_index_param->set_key(item.key());
-                grpc_index_param->set_value(item.value());
+                if (item.value().is_object()) {
+                    grpc_index_param->set_value(item.value().dump());
+                } else {
+                    grpc_index_param->set_value(item.value());
+                }
             }
         }
 
@@ -1269,7 +1260,7 @@ GrpcRequestHandler::Flush(::grpc::ServerContext* context, const ::milvus::grpc::
 }
 
 ::grpc::Status
-GrpcRequestHandler::Compact(::grpc::ServerContext* context, ::milvus::grpc::CompactParam* request,
+GrpcRequestHandler::Compact(::grpc::ServerContext* context, const ::milvus::grpc::CompactParam* request,
                             ::milvus::grpc::Status* response) {
     CHECK_NULLPTR_RETURN(request);
     LOG_SERVER_INFO_ << LogOut("Request [%s] %s begin.", GetContext(context)->ReqID().c_str(), __func__);
@@ -1703,17 +1694,17 @@ GrpcRequestHandler::DeserializeJsonToBoolQuery(
             if (vector_param_it != it.value().end()) {
                 const std::string& field_name = vector_param_it.key();
                 vector_query->field_name = field_name;
-                nlohmann::json vector_json = vector_param_it.value();
-                int64_t topk = vector_json["topk"];
+                nlohmann::json param_json = vector_param_it.value();
+                int64_t topk = param_json["topk"];
                 status = server::ValidateSearchTopk(topk);
                 if (!status.ok()) {
                     return status;
                 }
                 vector_query->topk = topk;
-                if (vector_json.contains("metric_type")) {
-                    std::string metric_type = vector_json["metric_type"];
+                if (param_json.contains("metric_type")) {
+                    std::string metric_type = param_json["metric_type"];
                     vector_query->metric_type = metric_type;
-                    query_ptr->metric_types.insert({field_name, vector_json["metric_type"]});
+                    query_ptr->metric_types.insert({field_name, param_json["metric_type"]});
                 }
                 if (!vector_param_it.value()["params"].empty()) {
                     vector_query->extra_params = vector_param_it.value()["params"];

@@ -49,18 +49,24 @@ set( MILVUS_BINARY_DIR      ${PROJECT_BINARY_DIR} )
 set( MILVUS_ENGINE_SRC      ${PROJECT_SOURCE_DIR}/src )
 set( MILVUS_THIRDPARTY_SRC  ${PROJECT_SOURCE_DIR}/thirdparty )
 
+# This will set RPATH to all excutable TARGET
+# self-installed dynamic libraries will be correctly linked by excutable
+set( CMAKE_INSTALL_RPATH "/usr/lib" "${CMAKE_INSTALL_PREFIX}/lib" )
+set( CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE )
 # **************************** Dependencies ****************************
 include( CTest )
 include( BuildUtils )
+include( DefineOptions )
 import_mysql_inc()
+using_ccache_if_defined( MILVUS_USE_CCACHE )
 
 include( ExternalProject )
-include( DefineOptions )
+include( FetchContent )
+set( FETCHCONTENT_BASE_DIR ${MILVUS_BINARY_DIR}/3rdparty_download )
+set(FETCHCONTENT_QUIET OFF)
 include( ThirdPartyPackages )
 
-add_subdirectory( thirdparty )
 
-using_ccache_if_defined( MILVUS_USE_CCACHE )
 
 # **************************** Compiler arguments ****************************
 
@@ -78,6 +84,9 @@ if ( MILVUS_GPU_VERSION )
 else ()
     message( STATUS "Building Milvus CPU version" )
 endif ()
+
+# TODO: remove after all ut set "FIU_ENABLE"
+set(MILVUS_WITH_FIU "ON")
 
 set_milvus_definition( MILVUS_WITH_PROMETHEUS   "MILVUS_WITH_PROMETHEUS" )
 set_milvus_definition( ENABLE_CPU_PROFILING     "ENABLE_CPU_PROFILING" )
@@ -100,11 +109,12 @@ append_flags( CMAKE_CXX_FLAGS
                     "-fPIC"
                     "-DELPP_THREAD_SAFE"
                     "-fopenmp"
-                    "-Werror=return-type"
+                    "-Werror"
                     )
 
 # **************************** Source files ****************************
 
+add_subdirectory( thirdparty )
 add_subdirectory( src )
 
 # Unittest lib
@@ -159,6 +169,13 @@ install(FILES
 find_package( Python COMPONENTS Interpreter Development )
 find_package( ClangTools )
 set( BUILD_SUPPORT_DIR "${CMAKE_SOURCE_DIR}/build-support" )
+
+if("$ENV{CMAKE_EXPORT_COMPILE_COMMANDS}" STREQUAL "1" OR CLANG_TIDY_FOUND)
+  # Generate a Clang compile_commands.json "compilation database" file for use
+  # with various development tools, such as Vim's YouCompleteMe plugin.
+  # See http://clang.llvm.org/docs/JSONCompilationDatabase.html
+  set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+endif()
 
 #
 # "make lint" target

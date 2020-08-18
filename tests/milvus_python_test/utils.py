@@ -44,7 +44,7 @@ default_index_params = [
     {"nlist": 1024, "m": 16},
     {"M": 48, "efConstruction": 500},
     # {"search_length": 50, "out_degree": 40, "candidate_pool_size": 100, "knng": 50},
-    {"n_trees": 4},
+    {"n_trees": 50},
     {"nlist": 1024},
     {"nlist": 1024}
 ]
@@ -64,6 +64,10 @@ def delete_support():
 
 def ivf():
     return ["FLAT", "IVF_FLAT", "IVF_SQ8", "IVF_SQ8_HYBRID", "IVF_PQ"]
+
+
+def binary_metrics():
+    return ["JACCARD", "HAMMING", "TANIMOTO", "SUBSTRUCTURE", "SUPERSTRUCTURE"]
 
 
 def l2(x, y):
@@ -208,7 +212,7 @@ def gen_single_vector_fields():
     return fields
 
 
-def gen_default_fields(auto_id=False):
+def gen_default_fields(auto_id=True):
     default_fields = {
         "fields": [
             {"field": "int64", "type": DataType.INT64},
@@ -216,24 +220,21 @@ def gen_default_fields(auto_id=False):
             {"field": default_float_vec_field_name, "type": DataType.FLOAT_VECTOR, "params": {"dim": dimension}},
         ],
         "segment_row_count": segment_row_count,
-        "auto_id" : True
+        "auto_id" : auto_id 
     }
-    if auto_id is True:
-        default_fields["auto_id"] = True
     return default_fields
 
 
-def gen_binary_default_fields(auto_id=False):
+def gen_binary_default_fields(auto_id=True):
     default_fields = {
         "fields": [
             {"field": "int64", "type": DataType.INT64},
             {"field": "float", "type": DataType.FLOAT},
             {"field": default_binary_vec_field_name, "type": DataType.BINARY_VECTOR, "params": {"dim": dimension}}
         ],
-        "segment_row_count": segment_row_count
+        "segment_row_count": segment_row_count,
+        "auto_id" : auto_id 
     }
-    if auto_id is True:
-        default_fields["auto_id"] = True
     return default_fields
 
 
@@ -307,44 +308,48 @@ def gen_default_vector_expr(default_query):
     return default_query["bool"]["must"][0]
 
 
-def gen_default_term_expr(keyword="term", values=None):
+def gen_default_term_expr(keyword="term", field="int64", values=None):
     if values is None:
         values = [i for i in range(nb // 2)]
-    expr = {keyword: {"int64": {"values": values}}}
+    expr = {keyword: {field: {"values": values}}}
     return expr
 
 
-def gen_default_range_expr(keyword="range", ranges=None):
+def update_term_expr(src_term, terms):
+    tmp_term = copy.deepcopy(src_term)
+    for term in terms:
+        tmp_term["term"].update(term)
+    return tmp_term
+
+
+def gen_default_range_expr(keyword="range", field="int64", ranges=None):
     if ranges is None:
         ranges = {"GT": 1, "LT": nb // 2}
-    expr = {keyword: {"int64": {"ranges": ranges}}}
+    expr = {keyword: {field: ranges}}
     return expr
+
+
+def update_range_expr(src_range, ranges):
+    tmp_range = copy.deepcopy(src_range)
+    for range in ranges:
+        tmp_range["range"].update(range)
+    return tmp_range
 
 
 def gen_invalid_range():
     range = [
-        # {"range": 1},
-        # {"range": {}},
-        # {"range": []},
-        {"range": {"range": {"int64": {"ranges": {"GT": 0, "LT": nb//2}}}}}
+        {"range": 1},
+        {"range": {}},
+        {"range": []},
+        {"range": {"range": {"int64": {"GT": 0, "LT": nb // 2}}}}
     ]
     return range
-
-
-def gen_invalid_ranges():
-    ranges = [
-        {"GT": nb, "LT": 0},
-        {"GT": nb},
-        {"LT": 0},
-        {"GT": 0.0, "LT": float(nb)}
-    ]
-    return ranges
 
 
 def gen_valid_ranges():
     ranges = [
         {"GT": 0, "LT": nb//2},
-        {"GT": nb, "LT": nb*2},
+        {"GT": nb // 2, "LT": nb*2},
         {"GT": 0},
         {"LT": nb},
         {"GT": -1, "LT": top_k},
@@ -356,7 +361,8 @@ def gen_invalid_term():
     terms = [
         {"term": 1},
         {"term": []},
-        {"term": {"term": {"int64": {"values": [i for i in range(nb//2)]}}}}
+        {"term": {}},
+        {"term": {"term": {"int64": {"values": [i for i in range(nb // 2)]}}}}
     ]
     return terms
 
@@ -420,25 +426,28 @@ def remove_vector_field(entities):
 
 
 def update_field_name(entities, old_name, new_name):
-    for item in entities:
+    tmp_entities = copy.deepcopy(entities)
+    for item in tmp_entities:
         if item["field"] == old_name:
             item["field"] = new_name
-    return entities
+    return tmp_entities
 
 
 def update_field_type(entities, old_name, new_name):
-    for item in entities:
+    tmp_entities = copy.deepcopy(entities)
+    for item in tmp_entities:
         if item["field"] == old_name:
             item["type"] = new_name
-    return entities
+    return tmp_entities
 
 
 def update_field_value(entities, old_type, new_value):
-    for item in entities:
+    tmp_entities = copy.deepcopy(entities)
+    for item in tmp_entities:
         if item["type"] == old_type:
-            for i in item["values"]:
-                item["values"][i] = new_value
-    return entities
+            for index, value in enumerate(item["values"]):
+                item["values"][index] = new_value
+    return tmp_entities
 
 
 def add_vector_field(nb, dimension=dimension):
@@ -558,26 +567,19 @@ def gen_invalid_metric_types():
 
 # TODO:
 def gen_invalid_ints():
-    top_ks = [
+    int_values = [
         # 1.0,
         None,
-        "stringg",
         [1, 2, 3],
-        (1, 2),
-        {"a": 1},
         " ",
         "",
+        -1,
         "String",
-        "12-s",
-        "BB。A",
-        " siede ",
-        "(mn)",
-        "pip+",
         "=c",
         "中文",
         "a".join("a" for i in range(256))
     ]
-    return top_ks
+    return int_values
 
 
 def gen_invalid_params():
@@ -769,7 +771,7 @@ def get_search_param(index_type):
     elif index_type == "NSG":
         search_params.update({"search_length": 100})
     elif index_type == "ANNOY":
-        search_params.update({"search_k": 100})
+        search_params.update({"search_k": 1000})
     else:
         logging.getLogger().error("Invalid index_type.")
         raise Exception("Invalid index_type.")

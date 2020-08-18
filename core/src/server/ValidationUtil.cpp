@@ -10,13 +10,14 @@
 // or implied. See the License for the specific language governing permissions and limitations under the License.
 
 #include "server/ValidationUtil.h"
+#include "db/Constants.h"
 #include "db/Utils.h"
 #include "knowhere/index/vector_index/ConfAdapter.h"
 #include "knowhere/index/vector_index/helpers/IndexParameter.h"
 #include "utils/Log.h"
 #include "utils/StringHelpFunctions.h"
 
-#include <fiu-local.h>
+#include <fiu/fiu-local.h>
 #include <algorithm>
 #include <limits>
 #include <set>
@@ -382,43 +383,6 @@ ValidateSearchTopk(int64_t top_k) {
 }
 
 Status
-ValidatePartitionName(const std::string& partition_name) {
-    if (partition_name.empty()) {
-        std::string msg = "Partition name should not be empty.";
-        LOG_SERVER_ERROR_ << msg;
-        return Status(SERVER_INVALID_COLLECTION_NAME, msg);
-    }
-
-    std::string invalid_msg = "Invalid partition name: " + partition_name + ". ";
-    // Collection name size shouldn't exceed 255.
-    if (partition_name.size() > engine::MAX_NAME_LENGTH) {
-        std::string msg = invalid_msg + "The length of a partition name must be less than 255 characters.";
-        LOG_SERVER_ERROR_ << msg;
-        return Status(SERVER_INVALID_COLLECTION_NAME, msg);
-    }
-
-    // Collection name first character should be underscore or character.
-    char first_char = partition_name[0];
-    if (first_char != '_' && std::isalpha(first_char) == 0) {
-        std::string msg = invalid_msg + "The first character of a partition name must be an underscore or letter.";
-        LOG_SERVER_ERROR_ << msg;
-        return Status(SERVER_INVALID_COLLECTION_NAME, msg);
-    }
-
-    int64_t table_name_size = partition_name.size();
-    for (int64_t i = 1; i < table_name_size; ++i) {
-        char name_char = partition_name[i];
-        if (name_char != '_' && std::isalnum(name_char) == 0) {
-            std::string msg = invalid_msg + "Partition name can only contain numbers, letters, and underscores.";
-            LOG_SERVER_ERROR_ << msg;
-            return Status(SERVER_INVALID_COLLECTION_NAME, msg);
-        }
-    }
-
-    return Status::OK();
-}
-
-Status
 ValidatePartitionTags(const std::vector<std::string>& partition_tags) {
     for (const std::string& tag : partition_tags) {
         // trim side-blank of tag, only compare valid characters
@@ -437,6 +401,34 @@ ValidatePartitionTags(const std::vector<std::string>& partition_tags) {
             LOG_SERVER_ERROR_ << msg;
             return Status(SERVER_INVALID_PARTITION_TAG, msg);
         }
+    }
+
+    return Status::OK();
+}
+
+Status
+ValidateInsertDataSize(const engine::DataChunkPtr& data) {
+    int64_t total_size = 0;
+    for (auto& pair : data->fixed_fields_) {
+        if (pair.second == nullptr) {
+            continue;
+        }
+
+        total_size += pair.second->Size();
+    }
+
+    for (auto& pair : data->variable_fields_) {
+        if (pair.second == nullptr) {
+            continue;
+        }
+
+        total_size += pair.second->Size();
+    }
+
+    if (total_size > engine::MAX_INSERT_DATA_SIZE) {
+        std::string msg = "The amount of data inserted each time cannot exceed " +
+                          std::to_string(engine::MAX_INSERT_DATA_SIZE / engine::MB) + " MB";
+        return Status(SERVER_INVALID_ROWRECORD_ARRAY, msg);
     }
 
     return Status::OK();

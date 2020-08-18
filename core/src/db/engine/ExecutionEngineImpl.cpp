@@ -177,7 +177,7 @@ ExecutionEngineImpl::Load(const TargetFields& field_names) {
             }
         } else {
             knowhere::IndexPtr index_ptr;
-            segment_reader_->LoadStructuredIndex(name, index_ptr);
+            STATUS_CHECK(segment_reader_->LoadStructuredIndex(name, index_ptr));
             index_exist = (index_ptr != nullptr);
             if (!index_exist) {
                 // for structured field, create a simple sorted index for it
@@ -337,8 +337,8 @@ ExecutionEngineImpl::Search(ExecutionEngineContext& context) {
 
         // Do And
         for (int64_t i = 0; i < entity_count_; i++) {
-            if (list->test(i) && !bitset->test(i)) {
-                list->clear(i);
+            if (!list->test(i) && !bitset->test(i)) {
+                list->set(i);
             }
         }
         vec_index->SetBlacklist(list);
@@ -406,25 +406,26 @@ ExecutionEngineImpl::ExecBinaryQuery(const milvus::query::GeneralQueryPtr& gener
                     break;
                 }
                 default: {
-                    std::string msg = "Invalid QueryRelation in RangeQuery";
+                    std::string msg = "Invalid QueryRelation in BinaryQuery";
                     return Status{SERVER_INVALID_ARGUMENT, msg};
                 }
             }
         }
         return status;
     } else {
-        bitset = std::make_shared<faiss::ConcurrentBitset>(entity_count_);
         if (general_query->leaf->term_query != nullptr) {
             // process attrs_data
+            bitset = std::make_shared<faiss::ConcurrentBitset>(entity_count_);
             STATUS_CHECK(ProcessTermQuery(bitset, general_query->leaf->term_query, attr_type));
         }
         if (general_query->leaf->range_query != nullptr) {
+            bitset = std::make_shared<faiss::ConcurrentBitset>(entity_count_);
             STATUS_CHECK(ProcessRangeQuery(attr_type, bitset, general_query->leaf->range_query));
         }
         if (!general_query->leaf->vector_placeholder.empty()) {
             // skip vector query
+            bitset = std::make_shared<faiss::ConcurrentBitset>(entity_count_, 255);
             vector_placeholder = general_query->leaf->vector_placeholder;
-            bitset = nullptr;
         }
     }
     return status;
@@ -461,32 +462,35 @@ ExecutionEngineImpl::IndexedTermQuery(faiss::ConcurrentBitsetPtr& bitset, const 
     segment_reader_->GetSegment(segment_ptr);
     knowhere::IndexPtr index_ptr = nullptr;
     auto attr_index = segment_ptr->GetStructuredIndex(field_name, index_ptr);
+    if (!index_ptr) {
+        return Status(DB_ERROR, "Get field: " + field_name + " structured index failed");
+    }
     switch (data_type) {
         case DataType::INT8: {
-            ProcessIndexedTermQuery<int8_t>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<int8_t>(bitset, index_ptr, term_values_json));
             break;
         }
         case DataType::INT16: {
-            ProcessIndexedTermQuery<int16_t>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<int16_t>(bitset, index_ptr, term_values_json));
             break;
         }
         case DataType::INT32: {
-            ProcessIndexedTermQuery<int32_t>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<int32_t>(bitset, index_ptr, term_values_json));
             break;
         }
         case DataType::INT64: {
-            ProcessIndexedTermQuery<int64_t>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<int64_t>(bitset, index_ptr, term_values_json));
             break;
         }
         case DataType::FLOAT: {
-            ProcessIndexedTermQuery<float>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<float>(bitset, index_ptr, term_values_json));
             break;
         }
         case DataType::DOUBLE: {
-            ProcessIndexedTermQuery<double>(bitset, index_ptr, term_values_json);
+            STATUS_CHECK(ProcessIndexedTermQuery<double>(bitset, index_ptr, term_values_json));
             break;
         }
-        default: { return Status{SERVER_INVALID_ARGUMENT, "Attribute:" + field_name + " type is wrong"}; }
+        default: { return Status(SERVER_INVALID_ARGUMENT, "Attribute:" + field_name + " type is wrong"); }
     }
     return Status::OK();
 }
@@ -543,27 +547,27 @@ ExecutionEngineImpl::IndexedRangeQuery(faiss::ConcurrentBitsetPtr& bitset, const
     auto status = Status::OK();
     switch (data_type) {
         case DataType::INT8: {
-            ProcessIndexedRangeQuery<int8_t>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<int8_t>(bitset, index_ptr, range_values_json));
             break;
         }
         case DataType::INT16: {
-            ProcessIndexedRangeQuery<int16_t>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<int16_t>(bitset, index_ptr, range_values_json));
             break;
         }
         case DataType::INT32: {
-            ProcessIndexedRangeQuery<int32_t>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<int32_t>(bitset, index_ptr, range_values_json));
             break;
         }
         case DataType::INT64: {
-            ProcessIndexedRangeQuery<int64_t>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<int64_t>(bitset, index_ptr, range_values_json));
             break;
         }
         case DataType::FLOAT: {
-            ProcessIndexedRangeQuery<float>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<float>(bitset, index_ptr, range_values_json));
             break;
         }
         case DataType::DOUBLE: {
-            ProcessIndexedRangeQuery<double>(bitset, index_ptr, range_values_json);
+            STATUS_CHECK(ProcessIndexedRangeQuery<double>(bitset, index_ptr, range_values_json));
             break;
         }
         default:

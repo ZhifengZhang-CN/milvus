@@ -27,7 +27,7 @@ const char* COLLECTION_NAME = milvus_sdk::Utils::GenCollectionName().c_str();
 constexpr int64_t COLLECTION_DIMENSION = 512;
 constexpr int64_t COLLECTION_INDEX_FILE_SIZE = 1024;
 constexpr milvus::MetricType COLLECTION_METRIC_TYPE = milvus::MetricType::L2;
-constexpr int64_t BATCH_ENTITY_COUNT = 4000;
+constexpr int64_t BATCH_ENTITY_COUNT = 10000;
 constexpr int64_t NQ = 5;
 constexpr int64_t TOP_K = 10;
 constexpr int64_t NPROBE = 32;
@@ -202,7 +202,8 @@ ClientTest::GetEntityByID(const std::string& collection_name, const std::vector<
 }
 
 void
-ClientTest::SearchEntities(const std::string& collection_name, int64_t topk, int64_t nprobe, const std::string metric_type) {
+ClientTest::SearchEntities(const std::string& collection_name, int64_t topk, int64_t nprobe,
+                           const std::string metric_type) {
     nlohmann::json dsl_json, vector_param_json;
     milvus_sdk::Utils::GenDSLJson(dsl_json, vector_param_json, metric_type);
 
@@ -262,8 +263,8 @@ void
 ClientTest::CreateIndex(const std::string& collection_name, int64_t nlist) {
     milvus_sdk::TimeRecorder rc("Create index");
     std::cout << "Wait until create all index done" << std::endl;
-    JSON json_params = {{"nlist", nlist}, {"index_type", "IVF_FLAT"}};
-    milvus::IndexParam index1 = {collection_name, "field_vec", "index_3", json_params.dump()};
+    JSON json_params = {{"index_type", "IVF_FLAT"}, {"metric_type", "L2"}, {"params", {{"nlist", nlist}}}};
+    milvus::IndexParam index1 = {collection_name, "field_vec", json_params.dump()};
     milvus_sdk::Utils::PrintIndexParam(index1);
     milvus::Status stat = conn_->CreateIndex(index1);
     std::cout << "CreateIndex function call status: " << stat.message() << std::endl;
@@ -325,7 +326,7 @@ ClientTest::Test() {
     ListCollections(table_array);
 
     CreateCollection(collection_name);
-    GetCollectionInfo(collection_name);
+//    GetCollectionInfo(collection_name);
     GetCollectionStats(collection_name);
 
     ListCollections(table_array);
@@ -334,6 +335,8 @@ ClientTest::Test() {
     InsertEntities(collection_name);
     Flush(collection_name);
     CountEntities(collection_name);
+    CreateIndex(collection_name, 1024);
+    GetCollectionInfo(collection_name);
     //    GetCollectionStats(collection_name);
     //
     BuildVectors(NQ, COLLECTION_DIMENSION);

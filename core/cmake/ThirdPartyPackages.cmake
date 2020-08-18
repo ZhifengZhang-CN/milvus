@@ -14,12 +14,8 @@ set(MILVUS_THIRDPARTY_DEPENDENCIES
         MySQLPP
         Prometheus
         SQLite
-        yaml-cpp
         libunwind
         gperftools
-        GRPC
-        ZLIB
-        Opentracing
         fiu
         AWS
         oatpp)
@@ -40,18 +36,10 @@ macro(build_dependency DEPENDENCY_NAME)
         build_prometheus()
     elseif ("${DEPENDENCY_NAME}" STREQUAL "SQLite")
         build_sqlite()
-    elseif ("${DEPENDENCY_NAME}" STREQUAL "yaml-cpp")
-        build_yamlcpp()
     elseif ("${DEPENDENCY_NAME}" STREQUAL "libunwind")
         build_libunwind()
     elseif ("${DEPENDENCY_NAME}" STREQUAL "gperftools")
         build_gperftools()
-    elseif ("${DEPENDENCY_NAME}" STREQUAL "GRPC")
-        build_grpc()
-    elseif ("${DEPENDENCY_NAME}" STREQUAL "ZLIB")
-        build_zlib()
-    elseif ("${DEPENDENCY_NAME}" STREQUAL "Opentracing")
-        build_opentracing()
     elseif ("${DEPENDENCY_NAME}" STREQUAL "fiu")
         build_fiu()
     elseif ("${DEPENDENCY_NAME}" STREQUAL "oatpp")
@@ -248,13 +236,6 @@ else ()
             "https://www.sqlite.org/2019/sqlite-autoconf-${SQLITE_VERSION}.tar.gz")
 endif ()
 
-if (DEFINED ENV{MILVUS_YAMLCPP_URL})
-    set(YAMLCPP_SOURCE_URL "$ENV{MILVUS_YAMLCPP_URL}")
-else ()
-    set(YAMLCPP_SOURCE_URL "https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-${YAMLCPP_VERSION}.tar.gz"
-                           "https://gitee.com/quicksilver/yaml-cpp/repository/archive/yaml-cpp-${YAMLCPP_VERSION}.zip")
-endif ()
-
 if (DEFINED ENV{MILVUS_LIBUNWIND_URL})
     set(LIBUNWIND_SOURCE_URL "$ENV{MILVUS_LIBUNWIND_URL}")
 else ()
@@ -269,30 +250,6 @@ else ()
             "https://github.com/gperftools/gperftools/releases/download/gperftools-${GPERFTOOLS_VERSION}/gperftools-${GPERFTOOLS_VERSION}.tar.gz")
 endif ()
 
-if (DEFINED ENV{MILVUS_GRPC_URL})
-    set(GRPC_SOURCE_URL "$ENV{MILVUS_GRPC_URL}")
-else ()
-    set(GRPC_SOURCE_URL
-            "https://github.com/milvus-io/grpc-milvus/archive/${GRPC_VERSION}.zip"
-            #"https://github.com/youny626/grpc-milvus/archive/${GRPC_VERSION}.zip"
-            #"https://gitee.com/quicksilver/grpc-milvus/repository/archive/${GRPC_VERSION}.zip"
-            )
-endif ()
-
-if (DEFINED ENV{MILVUS_ZLIB_URL})
-    set(ZLIB_SOURCE_URL "$ENV{MILVUS_ZLIB_URL}")
-else ()
-    set(ZLIB_SOURCE_URL "https://github.com/madler/zlib/archive/${ZLIB_VERSION}.tar.gz"
-                        "https://gitee.com/quicksilver/zlib/repository/archive/${ZLIB_VERSION}.zip")
-endif ()
-
-if (DEFINED ENV{MILVUS_OPENTRACING_URL})
-    set(OPENTRACING_SOURCE_URL "$ENV{MILVUS_OPENTRACING_URL}")
-else ()
-    set(OPENTRACING_SOURCE_URL "https://github.com/opentracing/opentracing-cpp/archive/${OPENTRACING_VERSION}.tar.gz"
-          "https://gitee.com/quicksilver/opentracing-cpp/repository/archive/${OPENTRACING_VERSION}.zip")
-endif ()
-
 if (DEFINED ENV{MILVUS_FIU_URL})
     set(FIU_SOURCE_URL "$ENV{MILVUS_FIU_URL}")
 else ()
@@ -303,8 +260,8 @@ endif ()
 if (DEFINED ENV{MILVUS_OATPP_URL})
     set(OATPP_SOURCE_URL "$ENV{MILVUS_OATPP_URL}")
 else ()
-    # set(OATPP_SOURCE_URL "https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz")
-    set(OATPP_SOURCE_URL "https://github.com/BossZou/oatpp/archive/${OATPP_VERSION}.zip")
+     set(OATPP_SOURCE_URL "https://github.com/oatpp/oatpp/archive/${OATPP_VERSION}.tar.gz")
+#    set(OATPP_SOURCE_URL "https://github.com/BossZou/oatpp/archive/${OATPP_VERSION}.zip")
 endif ()
 
 if (DEFINED ENV{MILVUS_AWS_URL})
@@ -505,51 +462,6 @@ if (MILVUS_WITH_SQLITE)
     link_directories(SYSTEM ${SQLITE_PREFIX}/lib/)
 endif ()
 
-# ----------------------------------------------------------------------
-# yaml-cpp
-
-macro(build_yamlcpp)
-    message(STATUS "Building yaml-cpp-${YAMLCPP_VERSION} from source")
-    set(YAMLCPP_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp_ep-prefix/src/yaml-cpp_ep")
-    set(YAMLCPP_STATIC_LIB "${YAMLCPP_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}yaml-cpp${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(YAMLCPP_INCLUDE_DIR "${YAMLCPP_PREFIX}/include")
-    set(YAMLCPP_CMAKE_ARGS
-            ${EP_COMMON_CMAKE_ARGS}
-            "-DCMAKE_INSTALL_PREFIX=${YAMLCPP_PREFIX}"
-            -DCMAKE_INSTALL_LIBDIR=lib
-            -DYAML_CPP_BUILD_TESTS=OFF
-            -DYAML_CPP_BUILD_TOOLS=OFF)
-
-    ExternalProject_Add(yaml-cpp_ep
-            URL
-            ${YAMLCPP_SOURCE_URL}
-            ${EP_LOG_OPTIONS}
-            URL_MD5
-            "5b943e9af0060d0811148b037449ef82"
-            BUILD_COMMAND
-            ${MAKE}
-            ${MAKE_BUILD_ARGS}
-            BUILD_BYPRODUCTS
-            "${YAMLCPP_STATIC_LIB}"
-            CMAKE_ARGS
-            ${YAMLCPP_CMAKE_ARGS})
-
-    file(MAKE_DIRECTORY "${YAMLCPP_INCLUDE_DIR}")
-    add_library(yaml-cpp STATIC IMPORTED)
-    set_target_properties(yaml-cpp
-            PROPERTIES IMPORTED_LOCATION "${YAMLCPP_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${YAMLCPP_INCLUDE_DIR}")
-
-    add_dependencies(yaml-cpp yaml-cpp_ep)
-endmacro()
-
-if (MILVUS_WITH_YAMLCPP)
-    resolve_dependency(yaml-cpp)
-
-    get_target_property(YAMLCPP_INCLUDE_DIR yaml-cpp INTERFACE_INCLUDE_DIRECTORIES)
-    link_directories(SYSTEM ${YAMLCPP_PREFIX}/lib/)
-    include_directories(SYSTEM ${YAMLCPP_INCLUDE_DIR})
-endif ()
 
 # ----------------------------------------------------------------------
 # libunwind
@@ -643,186 +555,6 @@ if (MILVUS_WITH_GPERFTOOLS)
 endif ()
 
 # ----------------------------------------------------------------------
-# GRPC
-
-macro(build_grpc)
-    message(STATUS "Building GRPC-${GRPC_VERSION} from source")
-    set(GRPC_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/grpc_ep-prefix/src/grpc_ep/install")
-    set(GRPC_INCLUDE_DIR "${GRPC_PREFIX}/include")
-    set(GRPC_STATIC_LIB "${GRPC_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}grpc${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(GRPC++_STATIC_LIB "${GRPC_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}grpc++${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(GRPCPP_CHANNELZ_STATIC_LIB "${GRPC_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}grpcpp_channelz${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(GRPC_PROTOBUF_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/grpc_ep-prefix/src/grpc_ep/libs/opt/protobuf")
-    set(GRPC_PROTOBUF_STATIC_LIB "${GRPC_PROTOBUF_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}protobuf${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(GRPC_PROTOC_STATIC_LIB "${GRPC_PROTOBUF_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}protoc${CMAKE_STATIC_LIBRARY_SUFFIX}")
-
-    ExternalProject_Add(grpc_ep
-            URL
-            ${GRPC_SOURCE_URL}
-            ${EP_LOG_OPTIONS}
-            URL_MD5
-            "478215c151a144c2d8625b49ff1b70aa"
-            CONFIGURE_COMMAND
-            ""
-            BUILD_IN_SOURCE
-            1
-            BUILD_COMMAND
-            ${MAKE} ${MAKE_BUILD_ARGS} prefix=${GRPC_PREFIX}
-            INSTALL_COMMAND
-            ${MAKE} install prefix=${GRPC_PREFIX}
-            BUILD_BYPRODUCTS
-            ${GRPC_STATIC_LIB}
-            ${GRPC++_STATIC_LIB}
-            ${GRPCPP_CHANNELZ_STATIC_LIB}
-            ${GRPC_PROTOBUF_STATIC_LIB}
-            ${GRPC_PROTOC_STATIC_LIB})
-
-    ExternalProject_Add_StepDependencies(grpc_ep build zlib_ep)
-
-    file(MAKE_DIRECTORY "${GRPC_INCLUDE_DIR}")
-
-    add_library(grpc STATIC IMPORTED)
-    set_target_properties(grpc
-            PROPERTIES IMPORTED_LOCATION "${GRPC_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${GRPC_INCLUDE_DIR}"
-            INTERFACE_LINK_LIBRARIES "zlib")
-
-    add_library(grpc++ STATIC IMPORTED)
-    set_target_properties(grpc++
-            PROPERTIES IMPORTED_LOCATION "${GRPC++_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${GRPC_INCLUDE_DIR}"
-            INTERFACE_LINK_LIBRARIES "zlib")
-
-    add_library(grpcpp_channelz STATIC IMPORTED)
-    set_target_properties(grpcpp_channelz
-            PROPERTIES IMPORTED_LOCATION "${GRPCPP_CHANNELZ_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${GRPC_INCLUDE_DIR}"
-            INTERFACE_LINK_LIBRARIES "zlib")
-
-    add_library(grpc_protobuf STATIC IMPORTED)
-    set_target_properties(grpc_protobuf
-            PROPERTIES IMPORTED_LOCATION "${GRPC_PROTOBUF_STATIC_LIB}"
-            INTERFACE_LINK_LIBRARIES "zlib")
-
-    add_library(grpc_protoc STATIC IMPORTED)
-    set_target_properties(grpc_protoc
-            PROPERTIES IMPORTED_LOCATION "${GRPC_PROTOC_STATIC_LIB}"
-            INTERFACE_LINK_LIBRARIES "zlib")
-
-    add_dependencies(grpc grpc_ep)
-    add_dependencies(grpc++ grpc_ep)
-    add_dependencies(grpcpp_channelz grpc_ep)
-    add_dependencies(grpc_protobuf grpc_ep)
-    add_dependencies(grpc_protoc grpc_ep)
-endmacro()
-
-if (MILVUS_WITH_GRPC)
-    resolve_dependency(GRPC)
-
-    get_target_property(GRPC_INCLUDE_DIR grpc INTERFACE_INCLUDE_DIRECTORIES)
-    include_directories(SYSTEM ${GRPC_INCLUDE_DIR})
-    link_directories(SYSTEM ${GRPC_PREFIX}/lib)
-
-    set(GRPC_THIRD_PARTY_DIR ${CMAKE_CURRENT_BINARY_DIR}/grpc_ep-prefix/src/grpc_ep/third_party)
-    include_directories(SYSTEM ${GRPC_THIRD_PARTY_DIR}/protobuf/src)
-    link_directories(SYSTEM ${GRPC_PROTOBUF_LIB_DIR})
-endif ()
-
-# ----------------------------------------------------------------------
-# zlib
-
-macro(build_zlib)
-    message(STATUS "Building ZLIB-${ZLIB_VERSION} from source")
-    set(ZLIB_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/zlib_ep-prefix/src/zlib_ep")
-    set(ZLIB_STATIC_LIB_NAME libz.a)
-    set(ZLIB_STATIC_LIB "${ZLIB_PREFIX}/lib/${ZLIB_STATIC_LIB_NAME}")
-    set(ZLIB_INCLUDE_DIR "${ZLIB_PREFIX}/include")
-    set(ZLIB_CMAKE_ARGS ${EP_COMMON_CMAKE_ARGS} "-DCMAKE_INSTALL_PREFIX=${ZLIB_PREFIX}"
-            -DBUILD_SHARED_LIBS=OFF)
-
-    ExternalProject_Add(zlib_ep
-            URL
-            ${ZLIB_SOURCE_URL}
-            ${EP_LOG_OPTIONS}
-            URL_MD5
-            "0095d2d2d1f3442ce1318336637b695f"
-            BUILD_COMMAND
-            ${MAKE}
-            ${MAKE_BUILD_ARGS}
-            BUILD_BYPRODUCTS
-            "${ZLIB_STATIC_LIB}"
-            CMAKE_ARGS
-            ${ZLIB_CMAKE_ARGS})
-
-    file(MAKE_DIRECTORY "${ZLIB_INCLUDE_DIR}")
-    add_library(zlib STATIC IMPORTED)
-    set_target_properties(zlib
-            PROPERTIES IMPORTED_LOCATION "${ZLIB_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}")
-
-    add_dependencies(zlib zlib_ep)
-endmacro()
-
-if (MILVUS_WITH_ZLIB)
-    resolve_dependency(ZLIB)
-
-    get_target_property(ZLIB_INCLUDE_DIR zlib INTERFACE_INCLUDE_DIRECTORIES)
-    include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
-endif ()
-
-# ----------------------------------------------------------------------
-# opentracing
-
-macro(build_opentracing)
-    message(STATUS "Building OPENTRACING-${OPENTRACING_VERSION} from source")
-    set(OPENTRACING_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/opentracing_ep-prefix/src/opentracing_ep")
-    set(OPENTRACING_STATIC_LIB "${OPENTRACING_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}opentracing${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(OPENTRACING_MOCK_TRACER_STATIC_LIB "${OPENTRACING_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}opentracing_mocktracer${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    set(OPENTRACING_INCLUDE_DIR "${OPENTRACING_PREFIX}/include")
-    set(OPENTRACING_CMAKE_ARGS
-            ${EP_COMMON_CMAKE_ARGS}
-            "-DCMAKE_INSTALL_PREFIX=${OPENTRACING_PREFIX}"
-            -DBUILD_SHARED_LIBS=OFF)
-
-    ExternalProject_Add(opentracing_ep
-            URL
-            ${OPENTRACING_SOURCE_URL}
-            ${EP_LOG_OPTIONS}
-            URL_MD5
-            "e598ba4b81ae8e1ceed8cd8bbf86f2fd"
-            CMAKE_ARGS
-            ${OPENTRACING_CMAKE_ARGS}
-            BUILD_COMMAND
-            ${MAKE}
-            ${MAKE_BUILD_ARGS}
-            BUILD_BYPRODUCTS
-            ${OPENTRACING_STATIC_LIB}
-            ${OPENTRACING_MOCK_TRACER_STATIC_LIB}
-            )
-
-    file(MAKE_DIRECTORY "${OPENTRACING_INCLUDE_DIR}")
-    add_library(opentracing STATIC IMPORTED)
-    set_target_properties(opentracing
-            PROPERTIES IMPORTED_LOCATION "${OPENTRACING_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${OPENTRACING_INCLUDE_DIR}")
-
-    add_library(opentracing_mocktracer STATIC IMPORTED)
-    set_target_properties(opentracing_mocktracer
-            PROPERTIES IMPORTED_LOCATION "${OPENTRACING_MOCK_TRACER_STATIC_LIB}"
-            INTERFACE_INCLUDE_DIRECTORIES "${OPENTRACING_INCLUDE_DIR}")
-
-    add_dependencies(opentracing opentracing_ep)
-    add_dependencies(opentracing_mocktracer opentracing_ep)
-endmacro()
-
-if (MILVUS_WITH_OPENTRACING)
-    resolve_dependency(Opentracing)
-
-    get_target_property(OPENTRACING_INCLUDE_DIR opentracing INTERFACE_INCLUDE_DIRECTORIES)
-    include_directories(SYSTEM ${OPENTRACING_INCLUDE_DIR})
-endif ()
-
-# ----------------------------------------------------------------------
 # fiu
 macro(build_fiu)
     message(STATUS "Building FIU-${FIU_VERSION} from source")
@@ -892,7 +624,7 @@ macro(build_oatpp)
             ${OATPP_SOURCE_URL}
             ${EP_LOG_OPTIONS}
             URL_MD5
-            "ae7143a8014ffed77c5340ac29af29f4"
+            "396350ca4fe5bedab3769e09eee2cc9f"
             CMAKE_ARGS
             ${OATPP_CMAKE_ARGS}
             BUILD_COMMAND
