@@ -51,6 +51,12 @@ jobs:
         run: |
           docker-compose build ubuntu-core
           docker rmi $(docker images | grep '<none>' | awk '{print $3}') || exit 0
+      - name: Cache Docker Volumes
+        uses: actions/cache@v1
+        with:
+          path: .docker
+          key: ubuntu${{ matrix.ubuntu }}-${{ hashFiles('core/**') }}
+          restore-keys: ubuntu${{ matrix.ubuntu }}-
       - name: Docker Run
         run: |
           docker-compose run --use-aliases -d db
@@ -99,6 +105,12 @@ jobs:
         run: |
           docker-compose build centos-core
           docker rmi $(docker images | grep '<none>' | awk '{print $3}') || exit 0
+      - name: Cache Docker Volumes
+        uses: actions/cache@v1
+        with:
+          path: .docker
+          key: centos${{ matrix.centos }}-${{ hashFiles('core/**') }}
+          restore-keys: centos${{ matrix.centos }}-
       - name: Docker Run
         run: |
           docker-compose run --use-aliases -d db
