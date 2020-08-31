@@ -14,4 +14,3 @@ Project versioning follows the specification of [Semantic Versioning 2.0.0](http
 -   All bugs, new features, enhancements must be tested.
 -   All documents need to be reviewed with no broken link.
 -   Pressure testing, stability testing, accuracy testing and performance testing results should be evaluated.
-
