@@ -29,7 +29,7 @@ on:
       - 'tests/**'
       - '.github/workflows/codeql-analysis.yml'
   schedule:
-    - cron: '45 15 * * 0'
+    - cron: '0 15 * * 0'
 
 jobs:
   analyze:
@@ -46,7 +46,7 @@ jobs:
 
     # Specify the container in which actions will run
     container:
-      image: milvusdb/milvus-dev:amd64-centos-7-core
+      image: milvusdb/milvus-dev:amd64-ubuntu-18.04-core
 
     steps:
     - name: Checkout repository
