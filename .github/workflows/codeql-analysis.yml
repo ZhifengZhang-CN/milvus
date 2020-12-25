@@ -93,7 +93,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: .docker
-        key: centos$7-${{ hashFiles('core/**') }}
+        key: centos7-${{ hashFiles('core/**') }}
         restore-keys: centos7-
 
     - if: matrix.language == 'cpp'
