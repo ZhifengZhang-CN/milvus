@@ -82,7 +82,7 @@ jobs:
     - if: matrix.language == 'cpp'
       name: Build CPP
       run: |
-        ci/scripts/build.sh -t Release -j2
+        /bin/bash -l -c ci/scripts/build.sh -t Release -j2
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
