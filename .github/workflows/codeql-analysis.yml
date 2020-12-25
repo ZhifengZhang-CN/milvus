@@ -75,10 +75,31 @@ jobs:
     #   make bootstrap
     #   make release
 
-    - if: matrix.language == 'cpp' 
+    - if: matrix.language == 'cpp'
+      name: Docker Pull
+      shell: bash
+      run: |
+        docker-compose pull --ignore-pull-failures centos-core
+
+    - if: matrix.language == 'cpp'
+      name: Docker Build
+      shell: bash
+      run: |
+        docker-compose build centos-core
+        docker rmi $(docker images | grep '<none>' | awk '{print $3}') || exit 0
+
+    - if: matrix.language == 'cpp'
+      name: Cache Docker Volumes
+      uses: actions/cache@v1
+      with:
+        path: .docker
+        key: centos$7-${{ hashFiles('core/**') }}
+        restore-keys: centos7-
+
+    - if: matrix.language == 'cpp'
       name: Build CPP
       run: |
-        docker-compose run --rm ubuntu-core /bin/bash -l -c "/milvus/ci/scripts/build.sh -t Release -j2"
+        docker-compose run --rm centos-core /bin/bash -l -c "/milvus/ci/scripts/build.sh -t Release -j2"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
