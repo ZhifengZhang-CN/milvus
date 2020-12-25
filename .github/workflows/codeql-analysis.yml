@@ -44,6 +44,10 @@ jobs:
         # Learn more:
         # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
 
+    # Specify the container in which actions will run
+    container:
+      image: milvusdb/milvus-dev:amd64-centos-7-core
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -76,30 +80,9 @@ jobs:
     #   make release
 
     - if: matrix.language == 'cpp'
-      name: Docker Pull
-      shell: bash
-      run: |
-        docker-compose pull --ignore-pull-failures centos-core
-
-    - if: matrix.language == 'cpp'
-      name: Docker Build
-      shell: bash
-      run: |
-        docker-compose build centos-core
-        docker rmi $(docker images | grep '<none>' | awk '{print $3}') || exit 0
-
-    - if: matrix.language == 'cpp'
-      name: Cache Docker Volumes
-      uses: actions/cache@v1
-      with:
-        path: .docker
-        key: centos7-${{ hashFiles('core/**') }}
-        restore-keys: centos7-
-
-    - if: matrix.language == 'cpp'
       name: Build CPP
       run: |
-        docker-compose run --rm centos-core /bin/bash -l -c "/milvus/ci/scripts/build.sh -t Release -j2"
+        scripts/build.sh -t Release -j2
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
