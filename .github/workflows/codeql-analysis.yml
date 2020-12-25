@@ -78,9 +78,7 @@ jobs:
     - if: matrix.language == 'cpp' 
       name: Build CPP
       run: |
-        mkdir -p core/cmake_build && cd core/cmake_build
-        cmake ..
-        cmake --build .
+        docker-compose run --rm ubuntu-core /bin/bash -l -c "/milvus/ci/scripts/build.sh -t Release -j2"
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
