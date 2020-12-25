@@ -19,6 +19,7 @@ on:
       - 'sdk/**'
       - 'shards/**'
       - 'tests/**'
+      - '.github/workflows/codeql-analysis.yml'
   pull_request:
     # file paths to consider in the event. Optional; defaults to all.
     paths:
@@ -26,6 +27,7 @@ on:
       - 'sdk/**'
       - 'shards/**'
       - 'tests/**'
+      - '.github/workflows/codeql-analysis.yml'
   schedule:
     - cron: '45 15 * * 0'
 
@@ -76,7 +78,7 @@ jobs:
     - if: matrix.language == 'cpp' 
       name: Build CPP
       run: |
-        mkdir -p cmake_build && cd cmake_build
+        mkdir -p core/cmake_build && cd core/cmake_build
         cmake ..
         cmake --build .
 
