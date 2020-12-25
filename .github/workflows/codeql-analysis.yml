@@ -46,7 +46,7 @@ jobs:
 
     # Specify the container in which actions will run
     container:
-      image: milvusdb/milvus-dev:amd64-ubuntu-18.04-core
+      image: milvusdb/milvus-dev:amd64-centos-7-core
 
     steps:
     - name: Checkout repository
@@ -82,7 +82,7 @@ jobs:
     - if: matrix.language == 'cpp'
       name: Build CPP
       run: |
-        /bin/bash -l -c ci/scripts/build.sh -t Release -j2
+        /bin/bash -l -c ci/scripts/build.sh -t Release
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
