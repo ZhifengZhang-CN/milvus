@@ -18,6 +18,7 @@ pipeline {
     }
     stages {
         stage ('E2E Test') {
+            when { triggeredBy 'TimerTrigger' }
             matrix {
                 axes {
                     axis {
