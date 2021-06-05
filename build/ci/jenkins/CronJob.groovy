@@ -8,6 +8,7 @@ pipeline {
     triggers {
         pollSCM ignorePostCommitHooks: true, scmpoll_spec: """${cron_timezone}
             ${cron_string}"""
+
     }
     options {
         timestamps()
