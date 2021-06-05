@@ -1,13 +1,11 @@
 #!/usr/bin/env groovy
 
-String cron_timezone = "TZ=Asia/Shanghai"
 String cron_string = BRANCH_NAME == "test_cronjob" ? "50 20,22,0,6,11,16 * * * " : ""
 
 pipeline {
     agent none
     triggers {
-        pollSCM ignorePostCommitHooks: true, scmpoll_spec: """${cron_timezone}
-            ${cron_string}"""
+        githubBranches skipFirstRun: true, spec: "${cron_string}", triggerMode: 'CRON'
     }
     options {
         timestamps()
