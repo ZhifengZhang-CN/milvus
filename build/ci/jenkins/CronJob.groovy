@@ -11,7 +11,6 @@ pipeline {
         timestamps()
         timeout(time: 1, unit: 'HOURS')
         buildDiscarder logRotator(artifactDaysToKeepStr: '30')
-        // parallelsAlwaysFailFast()
     }
     stages {
         stage ('E2E Test') {
