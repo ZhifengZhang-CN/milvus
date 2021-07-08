@@ -1,4 +1,4 @@
-name: Build and test
+name: Build and Test
 # TODO: do not trigger action for some document file update
 
 # This workflow is triggered on pushes or pull request to the repository.
@@ -18,31 +18,31 @@ on:
       - '!build/ci/jenkins/**'
 
 jobs:
-  ubuntu:
-    name: Build and test AMD64 Ubuntu ${{ matrix.ubuntu }}
+  builder:
+    name: Build and Test AMD64 ${{ matrix.os }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: [18.04]
+        os: [ubuntu18.04, centos7]
     env:
-      UBUNTU: ${{ matrix.ubuntu }}
+      OS_NAME: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Cache CCache Volumes
         uses: actions/cache@v1
         with:
-          path: .docker/amd64-ubuntu${{ matrix.ubuntu }}-ccache
-          key: ubuntu${{ matrix.ubuntu }}-ccache-${{ hashFiles('internal/core/**') }}
-          restore-keys: ubuntu${{ matrix.ubuntu }}-ccache-
+          path: .docker/amd64-${{ matrix.os }}-ccache
+          key: ${{ matrix.os }}-ccache-${{ hashFiles('internal/core/**') }}
+          restore-keys: ${{ matrix.os }}-ccache-
       - name: Cache Go Mod Volumes
         uses: actions/cache@v1
         with:
-          path: .docker/amd64-ubuntu${{ matrix.ubuntu }}-go-mod
-          key: ubuntu${{ matrix.ubuntu }}-go-mod-${{ hashFiles('**/go.sum') }}
-          restore-keys: ubuntu${{ matrix.ubuntu }}-go-mod-
+          path: .docker/amd64-${{ matrix.os }}-go-mod
+          key: ${{ matrix.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ matrix.os }}-go-mod-
       - name: Start Service
         shell: bash
         run: |
